@@ -17,7 +17,7 @@ pipeline {
             steps {
                 sshagent(['micro-demo']) {
                     sh '''
-                        ssh -A -o StrictHostKeyChecking=no ubuntu@16.171.136.158 \
+                        ssh -A -o StrictHostKeyChecking=no ubuntu@13.60.57.231 \
                            "set -e && \
                             cd /home/ubuntu/microservices-project &&
                             rm -rf microservices-project || true &&
