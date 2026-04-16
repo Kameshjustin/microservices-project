@@ -15,13 +15,13 @@ pipeline {
 
         stage('Deploy to EC2') {
             steps {
-                sshagent(['micro-demo']) {
+                sshagent(['micro-cred']) {
                     sh '''
-                        ssh -A -o StrictHostKeyChecking=no ubuntu@13.60.57.231 \
+                        ssh -o StrictHostKeyChecking=no ubuntu@13.53.83.53 \
                            "set -e && \
                             cd /home/ubuntu/microservices-project &&
                             rm -rf microservices-project || true &&
-                            git clone git@github.com:Kameshjustin/microservices-project.git /home/ubuntu/microservices-project && \
+                            git clone https://github.com/Kameshjustin/microservices-project.git /home/ubuntu/microservices-project && \
                             cd /home/ubuntu/microservices-project && \
                             chmod +x clone.sh && \
                             ./clone.sh && \
