@@ -1,6 +1,15 @@
 pipeline {
     agent any
 
+    environment {
+        SONARQUBE = "sonar-local"
+        SONAR_TOKEN = credentials('sonar-token')
+        AWS_REGION = "eu-north-1"
+        ECR_REPO = "microservices-app"
+        AWS_ACCOUNT_ID = "006965591834"
+        IMAGE_TAG = "${BUILD_NUMBER}"
+    }
+
     stages {
 
         stage('Checkout') {
@@ -13,25 +22,73 @@ pipeline {
             }
         }
 
-        stage('Deploy to EC2') {
+        stage('SonarQube Analysis') {
             steps {
-                sshagent(['micro-cred']) {
+                withSonarQubeEnv("${SONARQUBE}") {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no ubuntu@13.53.83.53 \
-                           "set -e && \
-                            cd /home/ubuntu/microservices-project &&
-                            rm -rf microservices-project || true &&
-                            git clone https://github.com/Kameshjustin/microservices-project.git /home/ubuntu/microservices-project && \
-                            cd /home/ubuntu/microservices-project && \
-                            chmod +x clone.sh && \
-                            ./clone.sh && \
-                            docker-compose down || true && \
-                            docker system prune -f && \
-                            docker-compose up -d --build"
+                        sonar-scanner \
+                          -Dsonar.projectKey=my-app \
+                          -Dsonar.projectName="My App" \
+                          -Dsonar.projectVersion=1.0 \
+                          -Dsonar.sources=. \
+                          -Dsonar.exclusions=node_modules/*,build/* \
+                          -Dsonar.host.url=http://localhost:9000 \
+                          -Dsonar.login=${SONAR_TOKEN}
                     '''
                 }
             }
         }
 
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                    docker build -t $ECR_REPO:$IMAGE_TAG .
+                '''
+            }
+        }
+
+        stage('Push to ECR') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-cred'
+                ]]) {
+                    sh '''
+                        aws ecr get-login-password --region $AWS_REGION | \
+                        docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+                        docker tag $ECR_REPO:$IMAGE_TAG \
+                        $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG
+
+                        docker push \
+                        $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy to EC2') {
+            steps {
+                sshagent(['micro-cred']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no ubuntu@16.171.166.136 \
+                        "set -e && \
+                        aws ecr get-login-password --region eu-north-1 | \
+                        docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.eu-north-1.amazonaws.com && \
+                        docker pull $AWS_ACCOUNT_ID.dkr.ecr.eu-north-1.amazonaws.com/$ECR_REPO:$IMAGE_TAG && \
+                        docker-compose down || true && \
+                        docker-compose up -d"
+                    '''
+                }
+            }
+        }
     }
-}
+} 
