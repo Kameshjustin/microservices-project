@@ -1,8 +1,9 @@
 pipeline {
 
     agent any
+    
     tools {
-        sonarQube 'sonar-scanner'
+        sonarRunner 'sonar-scanner'
     }
 
     environment {
@@ -40,7 +41,7 @@ pipeline {
                         -Dsonar.projectName="My App" \
                         -Dsonar.projectVersion=1.0 \
                         -Dsonar.sources=. \
-                        -Dsonar.exclusions=node_modules/*,build/*
+                        -Dsonar.exclusions=node_modules/**,build/**
                     '''
                 }
             }
