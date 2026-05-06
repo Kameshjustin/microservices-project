@@ -1,15 +1,16 @@
 pipeline {
 
     agent any
+    tools {
+        sonarQube 'sonar-scanner'
+    }
 
     environment {
 
         SONARQUBE = "sonar-local"
-
         AWS_REGION = "eu-north-1"
         ECR_REPO = "microservices-app"
         AWS_ACCOUNT_ID = "006965591834"
-
         IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
