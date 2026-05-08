@@ -7,7 +7,7 @@ pipeline {
     }
  
     environment {
-        SONARQUBE = "sonar-local-1"
+        SONARQUBE = "sonar-local"
         AWS_REGION = "eu-north-1"
         ECR_REPO = "microservices-app"
         AWS_ACCOUNT_ID = "006965591834"
